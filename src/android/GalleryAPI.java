@@ -218,23 +218,45 @@ public class GalleryAPI extends CordovaPlugin {
             } else if (permissions.size() > 0) {
                 String[] pArray = new String[permissions.size()];
                 pArray = permissions.toArray(pArray);
-                ActivityCompat.requestPermissions(this.cordova.getActivity(), pArray, STORAGE_PERMISSIONS_REQUEST);
+//                ActivityCompat.requestPermissions(this.cordova.getActivity(), pArray, STORAGE_PERMISSIONS_REQUEST);
+
+                cordova.requestPermissions(this, 0, pArray);
             } else
                 sendCheckPermissionResult(true, "Authorized");
         } else
             sendCheckPermissionResult(true, "Authorized");
     }
 
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case STORAGE_PERMISSIONS_REQUEST: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-                    sendCheckPermissionResult(true, "Authorized");
-                else
-                    sendCheckPermissionResult(false, "Denied");
+    @Override
+    public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
+        super.onRequestPermissionResult(requestCode, permissions, grantResults);
+
+//        switch (requestCode) {
+//            case STORAGE_PERMISSIONS_REQUEST: {
+//                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+//                    sendCheckPermissionResult(true, "Authorized");
+//                else
+//                    sendCheckPermissionResult(false, "Denied");
+//                return;
+//            }
+//        }
+
+        for (int r : grantResults) {
+            if (r == PackageManager.PERMISSION_DENIED) {
+                try {
+                    JSONObject result = new JSONObject();
+                    result.put("success", false);
+                    result.put("message", "Denied");
+                    cbc.error(result);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    cbc.error(e.getMessage());
+                }
                 return;
             }
         }
+
+        cbc.success();
     }
 
     private void sendCheckPermissionResult(Boolean success, String message) {
