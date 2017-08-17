@@ -1,0 +1,18 @@
+{
+  "name": "cordova-gallery-api",
+  "version": "1.0.0",
+  "description": "Cordova gallery API plugin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vsiestov/cordova-gallery-api.git"
+  },
+  "keywords": [
+    "cordova", ,
+    "plugin",
+    "cordova-android",
+    "cordova-ios"
+  ],
+  "author": "",
+  "license": "",
+  "homepage": "https://github.com/vsiestov/cordova-gallery-api"
+}
