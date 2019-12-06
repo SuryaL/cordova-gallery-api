@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:rim="http://www.blackberry.com/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" id="com.subitolabs.android.cordova.galleryapi" version="0.2">
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" 
+    xmlns:rim="http://www.blackberry.com/ns/widgets" 
+    xmlns:android="http://schemas.android.com/apk/res/android" id="com.subitolabs.android.cordova.galleryapi" version="0.3">
     <name>GalleryAPI</name>
     <description>Cordova gallery API plugin</description>
     <license>MIT</license>
     <keywords>cordova,gallery,media,api</keywords>
-    <repo>git@github.com:subitolabs/cordova-gallery-api.git</repo>
-    <issue>https://github.com/subitolabs/cordova-gallery-api/issues</issue>
+    <repo>git@github.com:Collaborne/cordova-gallery-api.git</repo>
+    <issue>https://github.com/Collaborne/cordova-gallery-api/issues</issue>
     <js-module src="www/gallery-api.js" name="galleryAPI">
         <clobbers target="galleryAPI" />
     </js-module>
-    <!-- android -->
     <platform name="android">
-        <framework src="com.android.support:support-v4:23.0.0" />
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="GalleryAPI">
                 <param name="android-package" value="com.subitolabs.cordova.galleryapi.GalleryAPI" />
@@ -21,7 +21,7 @@
             <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
             <uses-permission android:name="android.permission.MANAGE_DOCUMENTS" />
         </config-file>
-        <source-file src="src/android/GalleryAPI.java" target-dir="src/com/subitolabs/cordova/galleryapi" />
+        <source-file src="src/android/com/subitolabs/cordova/galleryapi/GalleryAPI.java" target-dir="src/com/subitolabs/cordova/galleryapi" />
     </platform>
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
@@ -29,8 +29,8 @@
                 <param name="ios-package" value="GalleryAPI" />
             </feature>
         </config-file>
-    
-        <preference name="PHOTO_LIBRARY_USAGE_DESCRIPTION" default=" " />
+
+        <preference name="PHOTO_LIBRARY_USAGE_DESCRIPTION" default="We need to get a list of your photos to display them" />
         <config-file target="*-Info.plist" parent="NSPhotoLibraryUsageDescription">
             <string>$PHOTO_LIBRARY_USAGE_DESCRIPTION</string>
         </config-file>

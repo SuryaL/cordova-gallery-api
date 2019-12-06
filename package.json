@@ -1,6 +1,6 @@
 {
   "name": "com.subitolabs.android.cordova.galleryapi",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Cordova gallery API plugin",
   "cordova": {
     "id": "com.subitolabs.android.cordova.galleryapi",

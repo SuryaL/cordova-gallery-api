@@ -12,6 +12,7 @@
 
 # Package Files #
 *.jar
+# you can find cordova.jar here - http://www.java2s.com/Code/Jar/c/cordova.htm
 *.war
 *.ear
 

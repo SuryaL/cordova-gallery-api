@@ -8,16 +8,15 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.widget.Toast;
 
-import org.apache.cordova.*;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import org.apache.cordova.api.CallbackContext;
+import org.apache.cordova.api.CordovaPlugin;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 public class GalleryAPI extends CordovaPlugin {
     public static final String ACTION_CHECK_PERMISSION = "checkPermission";
@@ -126,11 +126,15 @@ public class GalleryAPI extends CordovaPlugin {
 
     public ArrayOfObjects getBuckets() throws JSONException {
         Object columns = new Object() {{
-            put("id", MediaStore.Images.ImageColumns.BUCKET_ID);
-            put("title", MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put("id", MediaStore.Images.ImageColumns.BUCKET_ID);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put("title", MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME);
+            }
         }};
 
-        final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "1) GROUP BY 1,(2");
+        final ArrayOfObjects results = queryContentProvider(columns, "1) GROUP BY 1,(2");
 
         Object collection = null;
         for (int i = 0; i < results.size(); i++) {
@@ -155,7 +159,9 @@ public class GalleryAPI extends CordovaPlugin {
             put("title", MediaStore.Images.ImageColumns.DISPLAY_NAME);
             put("int.height", MediaStore.Images.ImageColumns.HEIGHT);
             put("int.width", MediaStore.Images.ImageColumns.WIDTH);
-            put("int.orientation", MediaStore.Images.ImageColumns.ORIENTATION);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put("int.orientation", MediaStore.Images.ImageColumns.ORIENTATION);
+            }
             put("mime_type", MediaStore.Images.ImageColumns.MIME_TYPE);
             put("float.lat", MediaStore.Images.ImageColumns.LATITUDE);
             put("float.lon", MediaStore.Images.ImageColumns.LONGITUDE);
@@ -163,7 +169,7 @@ public class GalleryAPI extends CordovaPlugin {
             put("int.thumbnail_id", MediaStore.Images.ImageColumns.MINI_THUMB_MAGIC);
         }};
 
-        final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "bucket_display_name = \"" + bucket + "\"");
+        final ArrayOfObjects results = queryContentProvider(columns, "bucket_display_name = \"" + bucket + "\"");
 
         ArrayOfObjects temp = new ArrayOfObjects();
 
@@ -185,7 +191,7 @@ public class GalleryAPI extends CordovaPlugin {
 
     private void checkPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            List<String> permissions = new ArrayList<String>();
+            List<String> permissions = new ArrayList<>();
 
             boolean isReadDenied = false;
             boolean isWriteDenied = false;
@@ -225,15 +231,12 @@ public class GalleryAPI extends CordovaPlugin {
             sendCheckPermissionResult(true, "Authorized");
     }
 
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case STORAGE_PERMISSIONS_REQUEST: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-                    sendCheckPermissionResult(true, "Authorized");
-                else
-                    sendCheckPermissionResult(false, "Denied");
-                return;
-            }
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == STORAGE_PERMISSIONS_REQUEST) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                sendCheckPermissionResult(true, "Authorized");
+            else
+                sendCheckPermissionResult(false, "Denied");
         }
     }
 
@@ -252,63 +255,63 @@ public class GalleryAPI extends CordovaPlugin {
     private JSONObject getMediaThumbnail(JSONObject media) throws JSONException {
 
         File thumbnailPath = thumbnailPathFromMediaId(media.getString("id"));
-        if (thumbnailPath.exists()) {
-            System.out.println("Thumbnail Already Exists!!!. Not Creating New One");
-            media.put("thumbnail", thumbnailPath);
-        } else {
-            if (ops == null) {
-                ops = new BitmapFactory.Options();
-                ops.inJustDecodeBounds = false;
-                ops.inSampleSize = 1;
-            }
-            media.put("error", "true");
-
-            File image = new File(media.getString("data"));
-
-            int sourceWidth = media.getInt("width");
-            int sourceHeight = media.getInt("height");
-
-            if (sourceHeight > 0 && sourceWidth > 0) {
-                int destinationWidth, destinationHeight;
-
-                if (sourceWidth > sourceHeight) {
-                    destinationHeight = BASE_SIZE;
-                    destinationWidth = (int) Math.ceil(destinationHeight * ((double) sourceWidth / sourceHeight));
-                } else {
-                    destinationWidth = BASE_SIZE;
-                    destinationHeight = (int) Math.ceil(destinationWidth * ((double) sourceHeight / sourceWidth));
-                }
-
-                if (sourceWidth * sourceHeight > 600000 && sourceWidth * sourceHeight < 1000000) {
-                    ops.inSampleSize = 4;
-                } else if (sourceWidth * sourceHeight > 1000000) {
-                    ops.inSampleSize = 8;
-                }
-
-                Bitmap originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
-
-                if (originalImageBitmap == null) {
+        if (thumbnailPath != null) {
+            if (thumbnailPath.exists()) {
+                System.out.println("Thumbnail Already Exists!!!. Not Creating New One");
+                media.put("thumbnail", thumbnailPath);
+            } else {
+                if (ops == null) {
+                    ops = new BitmapFactory.Options();
+                    ops.inJustDecodeBounds = false;
                     ops.inSampleSize = 1;
-                    originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops);
                 }
+                media.put("error", "true");
 
-                if (originalImageBitmap != null) {
+                File image = new File(media.getString("data"));
 
-                    if (destinationHeight <= 0 || destinationWidth <= 0) {
-                        System.out.println("destinationHeight: " + destinationHeight + "  destinationWidth: " + destinationWidth);
+                int sourceWidth = media.getInt("width");
+                int sourceHeight = media.getInt("height");
+
+                if (sourceHeight > 0 && sourceWidth > 0) {
+                    int destinationWidth, destinationHeight;
+
+                    if (sourceWidth > sourceHeight) {
+                        destinationHeight = BASE_SIZE;
+                        destinationWidth = (int) Math.ceil(destinationHeight * ((double) sourceWidth / sourceHeight));
+                    } else {
+                        destinationWidth = BASE_SIZE;
+                        destinationHeight = (int) Math.ceil(destinationWidth * ((double) sourceHeight / sourceWidth));
                     }
 
-                    Bitmap thumbnailBitmap = Bitmap.createScaledBitmap(originalImageBitmap, destinationWidth, destinationHeight, true);
-                    originalImageBitmap.recycle();
+                    if (sourceWidth * sourceHeight > 600000 && sourceWidth * sourceHeight < 1000000) {
+                        ops.inSampleSize = 4;
+                    } else if (sourceWidth * sourceHeight > 1000000) {
+                        ops.inSampleSize = 8;
+                    }
 
-                    if (thumbnailBitmap != null) {
-                        int orientation = media.getInt("orientation");
-                        if (orientation > 0)
-                            thumbnailBitmap = rotate(thumbnailBitmap, orientation);
+                    Bitmap originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
 
-                        byte[] thumbnailData = getBytesFromBitmap(thumbnailBitmap);
-                        thumbnailBitmap.recycle();
-                        if (thumbnailData != null) {
+                    if (originalImageBitmap == null) {
+                        ops.inSampleSize = 1;
+                        originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops);
+                    }
+
+                    if (originalImageBitmap != null) {
+
+                        if (destinationHeight <= 0 || destinationWidth <= 0) {
+                            System.out.println("destinationHeight: " + destinationHeight + "  destinationWidth: " + destinationWidth);
+                        }
+
+                        Bitmap thumbnailBitmap = Bitmap.createScaledBitmap(originalImageBitmap, destinationWidth, destinationHeight, true);
+                        originalImageBitmap.recycle();
+
+                        if (thumbnailBitmap != null) {
+                            int orientation = media.getInt("orientation");
+                            if (orientation > 0)
+                                thumbnailBitmap = rotate(thumbnailBitmap, orientation);
+
+                            byte[] thumbnailData = getBytesFromBitmap(thumbnailBitmap);
+                            thumbnailBitmap.recycle();
                             FileOutputStream outStream;
                             try {
                                 outStream = new FileOutputStream(thumbnailPath);
@@ -325,13 +328,12 @@ public class GalleryAPI extends CordovaPlugin {
                                 media.put("error", "false");
                             }
                         } else
-                            Log.e("Mendr", "Couldn't convert thumbnail bitmap to byte array");
+                            Log.e("Mendr", "Couldn't create the thumbnail bitmap");
                     } else
-                        Log.e("Mendr", "Couldn't create the thumbnail bitmap");
+                        Log.e("Mendr", "Couldn't decode the original image");
                 } else
-                    Log.e("Mendr", "Couldn't decode the original image");
-            } else
-                Log.e("Mendr", "Invalid Media!!! Image width or height is 0");
+                    Log.e("Mendr", "Invalid Media!!! Image width or height is 0");
+            }
         }
 
         return media;
@@ -359,16 +361,16 @@ public class GalleryAPI extends CordovaPlugin {
 
                 byte[] imageData = getBytesFromBitmap(originalImageBitmap);
                 originalImageBitmap.recycle();
-                if (imageData != null) {
-                    FileOutputStream outStream;
-                    try {
+                FileOutputStream outStream;
+                try {
+                    if (imagePath != null) {
                         outStream = new FileOutputStream(imagePath);
                         outStream.write(imageData);
                         outStream.close();
-                    } catch (IOException e) {
-                        Log.e("Mendr", "Couldn't write the image data");
-                        e.printStackTrace();
                     }
+                } catch (IOException e) {
+                    Log.e("Mendr", "Couldn't write the image data");
+                    e.printStackTrace();
                 }
             } else
                 Log.e("Mendr", "Couldn't decode the original image");
@@ -391,25 +393,19 @@ public class GalleryAPI extends CordovaPlugin {
     }
 
     private File thumbnailPathFromMediaId(String mediaId) {
-        File thumbnailPath = null;
-
         String thumbnailName = mediaId + "_mthumb.png";
         File dir = new File(this.getContext().getApplicationInfo().dataDir, DIR_NAME);
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
                 Log.e("Mendr", "Failed to create storage directory.");
-                return thumbnailPath;
+                return null;
             }
         }
 
-        thumbnailPath = new File(dir.getPath() + File.separator + thumbnailName);
-
-        return thumbnailPath;
+        return new File(dir.getPath() + File.separator + thumbnailName);
     }
 
     private File imagePathFromMediaId(String mediaId) {
-        File imagePath = null;
-
         File rootDir = new File(this.getContext().getApplicationInfo().dataDir, DIR_NAME);
         File dir = new File(rootDir, SUB_DIR_NAME);
 
@@ -423,36 +419,33 @@ public class GalleryAPI extends CordovaPlugin {
 
             if (!dir.mkdirs()) {
                 Log.e("Mendr", "Failed to create hq storage directory.");
-                return imagePath;
-            } else {
-                //dir created successfully
+                return null;
             }
+
         } else {
             //root directory doesn't exist
             //trying to create root directory
             if (!rootDir.mkdirs()) {
                 Log.e("Mendr", "Failed to create root storage directory.");
-                return imagePath;
+                return null;
             } else {
                 //root dir created successfully
                 if (!dir.mkdirs()) {
                     Log.e("Mendr", "Failed to create hq storage directory.");
-                    return imagePath;
-                } else {
-                    //dir created successfully
-                }
+                    return null;
+                }  //dir created successfully
+
             }
         }
 
         String imageName = mediaId + ".png";
-        imagePath = new File(dir.getPath() + File.separator + imageName);
 
-        return imagePath;
+        return new File(dir.getPath() + File.separator + imageName);
     }
 
-    void deleteRecursive(File fileOrDirectory) {
+    private void deleteRecursive(File fileOrDirectory) {
         if (fileOrDirectory.isDirectory())
-            for (File child : fileOrDirectory.listFiles())
+            for (File child : Objects.requireNonNull(fileOrDirectory.listFiles()))
                 deleteRecursive(child);
 
         fileOrDirectory.delete();
@@ -462,9 +455,9 @@ public class GalleryAPI extends CordovaPlugin {
         return this.cordova.getActivity().getApplicationContext();
     }
 
-    private ArrayOfObjects queryContentProvider(Uri collection, Object columns, String whereClause) throws JSONException {
-        final ArrayList<String> columnNames = new ArrayList<String>();
-        final ArrayList<String> columnValues = new ArrayList<String>();
+    private ArrayOfObjects queryContentProvider(Object columns, String whereClause) throws JSONException {
+        final ArrayList<String> columnNames = new ArrayList<>();
+        final ArrayList<String> columnValues = new ArrayList<>();
 
         Iterator<String> iteratorFields = columns.keys();
 
@@ -475,10 +468,10 @@ public class GalleryAPI extends CordovaPlugin {
             columnValues.add("" + columns.getString(column));
         }
 
-        final Cursor cursor = getContext().getContentResolver().query(collection, columnValues.toArray(new String[columns.length()]), whereClause, null, null);
+        final Cursor cursor = getContext().getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columnValues.toArray(new String[columns.length()]), whereClause, null, null);
         final ArrayOfObjects buffer = new ArrayOfObjects();
 
-        if (cursor.moveToFirst()) {
+        if (cursor != null && cursor.moveToFirst()) {
             do {
                 Object item = new Object();
 
@@ -503,7 +496,9 @@ public class GalleryAPI extends CordovaPlugin {
             while (cursor.moveToNext());
         }
 
-        cursor.close();
+        if (cursor != null) {
+            cursor.close();
+        }
 
         return buffer;
     }
